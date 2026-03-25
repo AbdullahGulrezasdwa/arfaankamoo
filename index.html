@@ -1,229 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ProMeet — Professional Team Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<style>
-:root {
-  --sidebar-w: 70px; --list-w: 320px;
-  --zoom-blue: #0b5cff; --bg-main: #ffffff;
-  --bg-side: #f4f5f9; --text-dark: #131619;
-  --text-dim: #747487; --border: #e2e2eb;
-}
-body, html { margin: 0; padding: 0; height: 100%; font-family: 'Inter', sans-serif; overflow: hidden; background: #fff; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProMeet — Real-Time Connect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root { --zoom-blue: #0b5cff; --bg: #f4f5f9; --border: #e2e2eb; --text: #131619; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; }
 
-.app-container { display: grid; grid-template-columns: var(--sidebar-w) var(--list-w) 1fr; height: 100vh; }
+        /* Sidebar Navigation */
+        .rail { width: 70px; background: #1a1d21; display: flex; flex-direction: column; align-items: center; padding: 25px 0; gap: 30px; }
+        .rail-btn { color: #9ca3af; font-size: 24px; cursor: pointer; }
+        .rail-btn.active { color: white; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 12px; }
 
-/* 1. Sidebar Rail */
-.rail { background: #1a1d21; border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 25px 0; gap: 30px; }
-.rail-icon { font-size: 24px; color: #9ca3af; cursor: pointer; transition: 0.2s; padding: 10px; border-radius: 14px; }
-.rail-icon.active { color: white; background: rgba(255,255,255,0.1); }
+        /* Contacts Panel */
+        .contacts-panel { width: 300px; background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .panel-header { padding: 20px; font-weight: 700; font-size: 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+        .add-area { padding: 15px; border-bottom: 1px solid #f0f0f0; }
+        .add-area input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+        
+        #contact-list { flex: 1; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #fafafa; transition: 0.2s; }
+        .contact-item:hover { background: #f0f7ff; }
+        .contact-item.active { background: #e8f0fe; border-left: 4px solid var(--zoom-blue); }
+        .avatar { width: 40px; height: 40px; background: #526375; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
-/* 2. Contacts Panel */
-.contact-list { background: var(--bg-main); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-.list-hdr { padding: 25px 20px 10px; font-weight: 700; font-size: 20px; display: flex; justify-content: space-between; align-items: center; }
-.search-box { padding: 15px; }
-.search-box input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: #f0f2f5; font-size: 14px; outline: none; }
+        /* Main Chat Area */
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: white; }
+        .chat-header { height: 70px; padding: 0 25px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .chat-messages { flex: 1; padding: 20px; background: #f9f9fb; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Bubbles */
+        .bubble { max-width: 70%; padding: 10px 15px; border-radius: 15px; font-size: 14px; line-height: 1.4; }
+        .bubble.sent { align-self: flex-end; background: var(--zoom-blue); color: white; border-bottom-right-radius: 2px; }
+        .bubble.received { align-self: flex-start; background: white; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
 
-.contact-item { display: flex; align-items: center; gap: 12px; padding: 15px 20px; cursor: pointer; transition: 0.1s; border-bottom: 1px solid #f9f9fb; }
-.contact-item:hover { background: #f0f7ff; }
-.contact-item.active { background: #e8f0fe; border-left: 4px solid var(--zoom-blue); }
-.avatar { width: 44px; height: 44px; background: #526375; color: white; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+        .chat-input-area { padding: 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+        .chat-input-area input { flex: 1; padding: 12px 20px; border-radius: 25px; border: 1px solid var(--border); background: #f0f2f5; outline: none; }
 
-/* 3. Main Chat Window */
-.chat-window { display: flex; flex-direction: column; background: #fff; }
-.chat-hdr { height: 80px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
-.chat-body { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #f9f9fb; }
-.chat-footer { padding: 20px 30px; border-top: 1px solid var(--border); }
-.input-area { display: flex; align-items: center; background: #f0f2f5; border-radius: 24px; padding: 8px 20px; gap: 12px; }
-.input-area input { flex: 1; border: none; background: transparent; outline: none; padding: 10px 0; font-size: 15px; }
+        /* Call UI */
+        #call-ui { position: fixed; inset: 0; background: #000; z-index: 1000; display: none; flex-direction: column; }
+        .video-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
+        video { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; background: #222; }
+        .call-controls { height: 120px; display: flex; justify-content: center; align-items: center; gap: 20px; }
+        .hangup-btn { background: #ff3b30; color: white; border: none; padding: 15px 40px; border-radius: 15px; cursor: pointer; font-weight: bold; }
 
-/* WhatsApp Style Bubbles */
-.bubble { max-width: 75%; padding: 10px 16px; border-radius: 18px; font-size: 14px; line-height: 1.4; position: relative; }
-.bubble.mine { align-self: flex-end; background: var(--zoom-blue); color: white; border-bottom-right-radius: 2px; }
-.bubble.theirs { align-self: flex-start; background: white; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+        /* Login */
+        #login-screen { position: fixed; inset: 0; background: white; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .login-card { width: 320px; text-align: center; }
+        .login-card input { width: 100%; padding: 15px; margin: 20px 0; border: 1px solid #ddd; border-radius: 10px; }
+        .login-card button { width: 100%; padding: 15px; background: var(--zoom-blue); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
 
-/* 4. Call UI Overlay */
-#call-overlay { position: fixed; inset: 0; background: #0b0e11; z-index: 5000; display: none; flex-direction: column; }
-#video-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
-.vid-box { background: #1c1f23; border-radius: 20px; overflow: hidden; position: relative; }
-video { width: 100%; height: 100%; object-fit: cover; }
-.call-tools { height: 110px; display: flex; justify-content: center; align-items: center; gap: 25px; }
-.tool-btn { width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
-.tool-hangup { background: #ff3b30; color: white; width: 80px; border-radius: 18px; }
-
-/* Auth Overlay */
-#auth-screen { position: fixed; inset: 0; z-index: 9999; background: #fff; display: flex; align-items: center; justify-content: center; }
-.auth-box { width: 360px; text-align: center; padding: 40px; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
-.hidden { display: none !important; }
-</style>
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
 
-<div id="auth-screen">
-  <div class="auth-box">
-    <div style="font-size: 40px; margin-bottom: 10px;">📡</div>
-    <h2 style="margin-bottom: 5px;">ProMeet Login</h2>
-    <p style="color: var(--text-dim); font-size: 14px; margin-bottom: 30px;">Login with your unique username.</p>
-    <input type="text" id="username-input" placeholder="Enter Username" style="width:100%; padding:14px; border-radius:12px; border:1px solid #ddd; margin-bottom:20px; font-size:16px; outline:none;">
-    <button onclick="login()" style="width:100%; padding:14px; background:var(--zoom-blue); color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer; font-size:16px;">Launch Account</button>
-  </div>
-</div>
-
-<div class="app-container">
-  <aside class="rail">
-    <div class="rail-icon active">🏠</div>
-    <div class="rail-icon">💬</div>
-    <div class="rail-icon">👥</div>
-    <div style="margin-top: auto;" class="rail-icon">⚙️</div>
-  </aside>
-
-  <aside class="contact-list">
-    <div class="list-hdr">Team Chat <button onclick="addContact()" style="background:var(--zoom-blue); color:white; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer;">+</button></div>
-    <div class="search-box"><input type="text" id="add-contact-in" placeholder="Add contact username..." onkeydown="if(event.key==='Enter')addContact()"></div>
-    <div id="contact-render-area" style="overflow-y: auto;"></div>
-  </aside>
-
-  <main class="chat-window">
-    <div class="chat-hdr">
-      <div>
-        <div id="active-name" style="font-weight:700; font-size:18px;">Select a Conversation</div>
-        <div id="active-status" style="font-size:12px; color:#4aae20;">Online</div>
-      </div>
-      <div style="display:flex; gap:20px; align-items:center;">
-        <button onclick="startCall()" id="call-btn" style="background:none; border:none; font-size:24px; cursor:pointer;">📹</button>
-        <button style="background:none; border:none; font-size:20px; color:var(--text-dim); cursor:pointer;">⋮</button>
-      </div>
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>ProMeet</h2>
+            <input type="text" id="my-username" placeholder="Pick your username">
+            <button onclick="initAccount()">Start Messaging</button>
+        </div>
     </div>
-    <div class="chat-body" id="chat-messages"></div>
-    <div class="chat-footer">
-      <div class="input-area">
-        <input type="text" id="chat-entry" placeholder="Message..." onkeydown="if(event.key==='Enter')sendMessage()">
-        <button onclick="sendMessage()" style="background:none; border:none; color:var(--zoom-blue); font-weight:700; cursor:pointer;">SEND</button>
-      </div>
-    </div>
-  </main>
-</div>
 
-<div id="call-overlay">
-  <div id="video-grid">
-    <div class="vid-box"><video id="me-video" autoplay muted playsinline style="transform: scaleX(-1);"></video></div>
-    <div class="vid-box"><video id="them-video" autoplay playsinline></video></div>
-  </div>
-  <div class="call-tools">
-    <button class="tool-btn" style="background:#3c4043; color:white;">🎤</button>
-    <button class="tool-btn" style="background:#3c4043; color:white;">📷</button>
-    <button class="tool-btn tool-hangup" onclick="location.reload()">📞</button>
-  </div>
-</div>
+    <div class="rail">
+        <div class="rail-btn active">🏠</div>
+        <div class="rail-btn">💬</div>
+    </div>
+
+    <div class="contacts-panel">
+        <div class="panel-header">Contacts <span style="color:var(--zoom-blue); cursor:pointer;">+</span></div>
+        <div class="add-area">
+            <input type="text" id="new-contact-name" placeholder="Type username & press Enter" onkeydown="if(event.key==='Enter') saveContact()">
+        </div>
+        <div id="contact-list"></div>
+    </div>
+
+    <div class="main-chat">
+        <div class="chat-header">
+            <div>
+                <div id="target-display-name" style="font-weight: 700;">No contact selected</div>
+                <div id="online-status" style="font-size: 12px; color: #888;">Offline</div>
+            </div>
+            <button onclick="startVideoCall()" style="background:none; border:none; font-size:24px; cursor:pointer;">📹</button>
+        </div>
+        <div class="chat-messages" id="chat-box"></div>
+        <div class="chat-input-area">
+            <input type="text" id="message-input" placeholder="Message..." onkeydown="if(event.key==='Enter') sendMsg()">
+            <button onclick="sendMsg()" style="border:none; background:none; color:var(--zoom-blue); font-weight:700; cursor:pointer;">Send</button>
+        </div>
+    </div>
+
+    <div id="call-ui">
+        <div class="video-grid">
+            <video id="local-video" autoplay muted playsinline></video>
+            <video id="remote-video" autoplay playsinline></video>
+        </div>
+        <div class="call-controls">
+            <button class="hangup-btn" onclick="location.reload()">End Call</button>
+        </div>
+    </div>
 
 <script>
-const $ = id => document.getElementById(id);
-let S = {
-  peer: null, conn: null, call: null,
-  myID: '', target: '', 
-  contacts: JSON.parse(localStorage.getItem('pm_contacts') || '[]')
-};
+    const $ = id => document.getElementById(id);
+    let S = { 
+        peer: null, 
+        conn: null, 
+        myID: '', 
+        activeTarget: '', 
+        contacts: JSON.parse(localStorage.getItem('saved_contacts') || '[]') 
+    };
 
-// Auto-login if session exists
-window.onload = () => {
-  const last = localStorage.getItem('pm_user');
-  if(last) { $('username-input').value = last; login(); }
-};
+    // 1. Initialize Account
+    function initAccount() {
+        const user = $('my-username').value.trim();
+        if(!user) return alert("Username required");
+        
+        S.myID = user;
+        $('login-screen').classList.add('hidden');
+        
+        // Connect to PeerServer using the username as ID
+        S.peer = new Peer(user, {
+            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        });
 
-function login() {
-  const user = $('username-input').value.trim();
-  if(!user) return;
-  S.myID = user;
-  localStorage.setItem('pm_user', user);
-  $('auth-screen').classList.add('hidden');
-  
-  S.peer = new Peer(user, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }});
-  
-  S.peer.on('connection', c => {
-    S.conn = c;
-    setupChatListeners();
-  });
+        S.peer.on('open', () => console.log("Connected as " + S.myID));
 
-  S.peer.on('call', async c => {
-    if(confirm(`Incoming call from ${c.peer}. Answer?`)) {
-      const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-      c.answer(stream);
-      showCallUI(stream, c);
+        // Listen for Incoming Connections (Chat)
+        S.peer.on('connection', conn => {
+            S.conn = conn;
+            S.activeTarget = conn.peer;
+            handleIncomingData();
+        });
+
+        // Listen for Incoming Calls
+        S.peer.on('call', async call => {
+            if(confirm("Incoming call from " + call.peer)) {
+                const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+                call.answer(stream);
+                showCallUI(stream, call);
+            }
+        });
+
+        renderContacts();
     }
-  });
 
-  renderContacts();
-}
+    // 2. Add and Save Contact (The logic you asked for)
+    function saveContact() {
+        const name = $('new-contact-name').value.trim();
+        if(!name || name === S.myID) return;
 
-function addContact() {
-  const val = $('add-contact-in').value.trim();
-  if(val && val !== S.myID && !S.contacts.includes(val)) {
-    S.contacts.push(val);
-    localStorage.setItem('pm_contacts', JSON.stringify(S.contacts));
-    renderContacts();
-  }
-  $('add-contact-in').value = '';
-}
+        if(!S.contacts.includes(name)) {
+            S.contacts.push(name);
+            localStorage.setItem('saved_contacts', JSON.stringify(S.contacts));
+            renderContacts();
+        }
+        $('new-contact-name').value = '';
+    }
 
-function renderContacts() {
-  $('contact-render-area').innerHTML = S.contacts.map(c => `
-    <div class="contact-item" onclick="openChat('${c}')" id="user-${c}">
-      <div class="avatar">${c[0].toUpperCase()}</div>
-      <div style="font-weight:600; font-size:14px;">${c}</div>
-    </div>
-  `).join('');
-}
+    function renderContacts() {
+        $('contact-list').innerHTML = S.contacts.map(name => `
+            <div class="contact-item" onclick="selectContact('${name}')" id="item-${name}">
+                <div class="avatar">${name[0].toUpperCase()}</div>
+                <div style="font-weight:600;">${name}</div>
+            </div>
+        `).join('');
+    }
 
-function openChat(id) {
-  S.target = id;
-  $('active-name').innerText = id;
-  $('chat-messages').innerHTML = '';
-  document.querySelectorAll('.contact-item').forEach(e => e.classList.remove('active'));
-  $(`user-${id}`).classList.add('active');
-  
-  S.conn = S.peer.connect(id);
-  setupChatListeners();
-}
+    // 3. Connect to a specific contact
+    function selectContact(name) {
+        S.activeTarget = name;
+        $('target-display-name').innerText = name;
+        $('chat-box').innerHTML = '';
+        
+        document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
+        $(`item-${name}`).classList.add('active');
 
-async function startCall() {
-  if(!S.target) return alert("Select a contact first");
-  const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-  const call = S.peer.call(S.target, stream);
-  showCallUI(stream, call);
-}
+        // Initiate data connection
+        S.conn = S.peer.connect(name);
+        handleIncomingData();
+    }
 
-function showCallUI(stream, call) {
-  $('call-overlay').style.display = 'flex';
-  $('me-video').srcObject = stream;
-  call.on('stream', rs => $('them-video').srcObject = rs);
-  S.call = call;
-}
+    // 4. Messaging Logic
+    function sendMsg() {
+        const txt = $('message-input').value.trim();
+        if(!txt || !S.conn) return;
 
-function sendMessage() {
-  const msg = $('chat-entry').value.trim();
-  if(!msg || !S.conn) return;
-  S.conn.send({ text: msg, from: S.myID });
-  appendBubble(msg, true);
-  $('chat-entry').value = '';
-}
+        S.conn.send(txt);
+        appendBubble(txt, true);
+        $('message-input').value = '';
+    }
 
-function setupChatListeners() {
-  S.conn.on('data', data => {
-    if(data.from === S.target) appendBubble(data.text, false);
-  });
-}
+    function handleIncomingData() {
+        S.conn.on('open', () => $('online-status').innerText = "Online");
+        S.conn.on('data', data => appendBubble(data, false));
+    }
 
-function appendBubble(text, isMe) {
-  const div = document.createElement('div');
-  div.className = `bubble ${isMe ? 'mine' : 'theirs'}`;
-  div.innerText = text;
-  $('chat-messages').appendChild(div);
-  $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
-}
+    function appendBubble(txt, isMine) {
+        const b = document.createElement('div');
+        b.className = `bubble ${isMine ? 'sent' : 'received'}`;
+        b.innerText = txt;
+        $('chat-box').appendChild(b);
+        $('chat-box').scrollTop = $('chat-box').scrollHeight;
+    }
+
+    // 5. Video Call Logic
+    async function startVideoCall() {
+        if(!S.activeTarget) return alert("Select a contact");
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+            const call = S.peer.call(S.activeTarget, stream);
+            showCallUI(stream, call);
+        } catch(e) { alert("Camera error"); }
+    }
+
+    function showCallUI(localStream, call) {
+        $('call-ui').style.display = 'flex';
+        $('local-video').srcObject = localStream;
+        call.on('stream', remoteStream => {
+            $('remote-video').srcObject = remoteStream;
+        });
+    }
 </script>
 </body>
 </html>
