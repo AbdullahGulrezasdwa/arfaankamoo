@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProMeet v10 — Final Hardened Build</title>
+    <title>ProMeet v10.1 — Reliability Patch</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -11,35 +11,28 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; background: #fff; }
         
-        /* Rail & Sidebar */
         .rail { width: 72px; background: var(--bg-side); display: flex; flex-direction: column; align-items: center; padding: 24px 0; gap: 32px; flex-shrink: 0; }
         .side-panel { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .main-view { flex: 1; display: flex; flex-direction: column; background: #f9f9fb; position: relative; }
 
-        /* Chat UI */
         .chat-msgs { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .bubble { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .sent { align-self: flex-end; background: var(--zoom-blue); color: #fff; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
 
-        /* Status & Notifications */
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; transition: 0.3s; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
         .online { background: var(--online); box-shadow: 0 0 8px var(--online); }
         .offline { background: var(--offline); }
         .unread-badge { background: var(--notify); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
 
-        /* Interactive Elements */
-        .contact-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
-        .contact-item:hover { background: #f8f9fa; }
+        .contact-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
         .contact-active { background: #f0f7ff !important; border-left: 4px solid var(--zoom-blue); }
         
-        /* Video Call UI */
         #call-ui { position: fixed; inset: 0; background: #000; z-index: 4000; display: none; flex-direction: column; }
         .v-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 40px; }
         video { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; background: #1a1d21; }
         
-        .control-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: #3c4043; color: white; cursor: pointer; font-size: 20px; transition: 0.2s; }
-        .control-btn:hover { background: #4a4e52; }
+        .control-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: #3c4043; color: white; cursor: pointer; font-size: 20px; }
         .control-active { background: #ea4335 !important; }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 5000; display: flex; align-items: center; justify-content: center; }
@@ -95,25 +88,17 @@
         <div style="height:110px; display:flex; justify-content:center; align-items:center; gap:24px; background: #1a1d21;">
             <button id="toggle-mic" class="control-btn">🎤</button>
             <button id="toggle-cam" class="control-btn">📷</button>
-            <button id="hangup-btn" style="background:#ff3b30; color:white; border:none; padding:15px 40px; border-radius:30px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px;">
-                <span>LEAVE</span>
-            </button>
+            <button id="hangup-btn" style="background:#ff3b30; color:white; border:none; padding:15px 40px; border-radius:30px; font-weight:700; cursor:pointer;">LEAVE</button>
         </div>
     </div>
 
 <script>
     const $ = id => document.getElementById(id);
-    let S = { 
-        peer: null, connections: {}, unread: {},
-        myID: '', activeUser: '', 
-        contacts: JSON.parse(localStorage.getItem('pm_contacts') || '[]'),
-        chat: JSON.parse(localStorage.getItem('pm_chat_v10') || '[]')
-    };
+    let S = { peer: null, connections: {}, unread: {}, myID: '', activeUser: '', 
+             contacts: JSON.parse(localStorage.getItem('pm_contacts') || '[]'),
+             chat: JSON.parse(localStorage.getItem('pm_chat_v10') || '[]') };
 
-    window.onload = () => {
-        const saved = localStorage.getItem('pm_user');
-        if(saved) { $('my-name-in').value = saved; initApp(); }
-    };
+    window.onload = () => { if(localStorage.getItem('pm_user')) { $('my-name-in').value = localStorage.getItem('pm_user'); initApp(); } };
 
     function initApp() {
         const id = $('my-name-in').value.trim();
@@ -123,11 +108,6 @@
 
         S.peer = new Peer(id, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }});
 
-        // 1. Signaling Heartbeat
-        setInterval(() => {
-            if (S.peer && S.peer.disconnected && !S.peer.destroyed) S.peer.reconnect();
-        }, 5000);
-
         S.peer.on('connection', conn => trackConnection(conn));
         
         S.peer.on('call', async call => {
@@ -135,175 +115,95 @@
             $('caller-name').innerText = "Call from " + call.peer;
             $('confirm-call-btn').onclick = async () => {
                 $('call-request-modal').classList.add('hidden');
-                const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-                call.answer(stream);
-                setupVideoUI(stream, call);
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+                    call.answer(stream);
+                    setupVideoUI(stream, call);
+                } catch(e) { console.error("Camera denied", e); call.answer(); }
             };
         });
 
-        S.peer.on('error', err => {
-            if(err.type === 'peer-unavailable') console.warn("Peer not found.");
-        });
-
+        setInterval(() => { if (S.peer && S.peer.disconnected) S.peer.reconnect(); }, 5000);
         renderContacts();
     }
 
-    // --- REFINED TRACKING ---
     function trackConnection(conn) {
         S.connections[conn.peer] = conn;
-        const updateUI = () => {
-            renderContacts();
-            if (S.activeUser === conn.peer) {
-                $('header-status').className = `status-dot ${conn.open ? 'online' : 'offline'}`;
-            }
-        };
-
-        conn.on('data', data => {
-            if(data.type === 'chat') handleIncomingMsg(conn.peer, data.val);
-        });
-
-        conn.on('open', updateUI);
-        conn.on('close', () => { delete S.connections[conn.peer]; updateUI(); });
-        conn.on('error', () => { delete S.connections[conn.peer]; updateUI(); });
-        updateUI();
+        const up = () => { renderContacts(); if (S.activeUser === conn.peer) $('header-status').className = `status-dot ${conn.open ? 'online' : 'offline'}`; };
+        conn.on('data', d => { if(d.type === 'chat') handleIncomingMsg(conn.peer, d.val); });
+        conn.on('open', up);
+        conn.on('close', () => { delete S.connections[conn.peer]; up(); });
+        conn.on('error', () => { delete S.connections[conn.peer]; up(); });
+        up();
     }
 
-    // --- MESSAGING ---
     function handleIncomingMsg(from, val) {
-        if (!S.contacts.includes(from)) {
-            S.contacts.push(from);
-            localStorage.setItem('pm_contacts', JSON.stringify(S.contacts));
-        }
+        if (!S.contacts.includes(from)) { S.contacts.push(from); localStorage.setItem('pm_contacts', JSON.stringify(S.contacts)); }
         if (S.activeUser !== from) S.unread[from] = (S.unread[from] || 0) + 1;
         pushMsg(val, from, false, S.myID);
     }
 
     function sendMsg() {
-        const val = $('chat-in').value.trim();
-        if (!val || !S.activeUser) return;
+        const v = $('chat-in').value.trim(); if (!v || !S.activeUser) return;
         let conn = S.connections[S.activeUser];
-
-        const performSend = () => {
-            if (conn && conn.open) {
-                conn.send({ type: 'chat', val: val });
-                pushMsg(val, S.myID, true, S.activeUser);
-                $('chat-in').value = '';
-            }
-        };
-
-        if (conn && conn.open) performSend();
-        else {
-            if (!conn) { conn = S.peer.connect(S.activeUser); trackConnection(conn); }
-            if (!conn._msgPending) {
-                conn._msgPending = true;
-                conn.once('open', () => { conn._msgPending = false; performSend(); });
-            }
-        }
+        const doSend = () => { if (conn && conn.open) { conn.send({ type: 'chat', val: v }); pushMsg(v, S.myID, true, S.activeUser); $('chat-in').value = ''; } };
+        if (conn && conn.open) doSend();
+        else { if(!conn) { conn = S.peer.connect(S.activeUser); trackConnection(conn); }
+               conn.once('open', doSend); }
     }
 
-    function pushMsg(text, from, me, target) {
-        const entry = { id: Date.now(), text, from, me, target, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
-        S.chat.push(entry);
+    function pushMsg(t, f, m, trg) {
+        S.chat.push({ id: Date.now(), text: t, from: f, me: m, target: trg, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
         localStorage.setItem('pm_chat_v10', JSON.stringify(S.chat));
-        if(S.activeUser === from || (me && S.activeUser === target)) renderChat();
+        if(S.activeUser === f || (m && S.activeUser === trg)) renderChat();
         renderContacts();
     }
 
     function renderChat() {
-        const current = S.chat.filter(m => (m.me && m.target === S.activeUser) || (!m.me && m.from === S.activeUser));
-        $('chat-box').innerHTML = current.map(m => `
-            <div class="bubble ${m.me ? 'sent' : 'received'}">
-                <div style="font-size:10px; opacity:0.6; margin-bottom:4px;">${m.from} • ${m.time}</div>
-                ${m.text}
-            </div>
-        `).join('');
+        const cur = S.chat.filter(m => (m.me && m.target === S.activeUser) || (!m.me && m.from === S.activeUser));
+        $('chat-box').innerHTML = cur.map(m => `<div class="bubble ${m.me ? 'sent' : 'received'}"><div style="font-size:10px; opacity:0.6;">${m.from} • ${m.time}</div>${m.text}</div>`).join('');
         $('chat-box').scrollTop = $('chat-box').scrollHeight;
     }
 
-    // --- SIDEBAR ---
-    function selectUser(name) {
-        S.activeUser = name;
-        delete S.unread[name];
-        $('active-title').innerText = name;
-        renderContacts();
-        renderChat();
-        if (!S.connections[name]) trackConnection(S.peer.connect(name));
-    }
+    function selectUser(n) { S.activeUser = n; delete S.unread[n]; $('active-title').innerText = n; renderContacts(); renderChat(); if (!S.connections[n]) trackConnection(S.peer.connect(n)); }
 
     function renderContacts() {
         $('contact-list').innerHTML = S.contacts.map(c => {
-            const isOnline = S.connections[c] && S.connections[c].open;
-            const count = S.unread[c] || 0;
-            return `
-                <div onclick="selectUser('${c}')" class="contact-item ${S.activeUser===c?'contact-active':''}">
-                    <div style="display:flex; align-items:center;">
-                        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
-                        <span>${c}</span>
-                    </div>
-                    ${count > 0 ? `<span class="unread-badge">${count}</span>` : ''}
-                </div>
-            `;
+            const on = S.connections[c] && S.connections[c].open;
+            return `<div onclick="selectUser('${c}')" class="contact-item ${S.activeUser===c?'contact-active':''}"><div><span class="status-dot ${on?'online':'offline'}"></span>${c}</div>${S.unread[c] ? `<span class="unread-badge">${S.unread[c]}</span>` : ''}</div>`;
         }).join('');
     }
 
-    function addContact() {
-        const t = $('target-id-in').value.trim();
-        if(t && !S.contacts.includes(t)) {
-            S.contacts.push(t);
-            localStorage.setItem('pm_contacts', JSON.stringify(S.contacts));
-            renderContacts();
-        }
-        $('target-id-in').value = '';
-    }
+    function addContact() { const t = $('target-id-in').value.trim(); if(t && !S.contacts.includes(t)) { S.contacts.push(t); localStorage.setItem('pm_contacts', JSON.stringify(S.contacts)); renderContacts(); } $('target-id-in').value = ''; }
 
-    // --- VIDEO & MEDIA CONTROLS (V10) ---
+    // --- RE-HARDENED VIDEO LOGIC ---
     async function initiateCall() {
         if(!S.activeUser) return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
             const call = S.peer.call(S.activeUser, stream);
             setupVideoUI(stream, call);
-        } catch(e) { alert("Camera access denied."); }
+        } catch(e) { alert("Camera Error"); }
     }
 
     function setupVideoUI(local, call) {
         $('call-ui').style.display = 'flex';
         $('v-local').srcObject = local;
-        
-        // Mute/Camera Toggle Handlers
-        $('toggle-mic').onclick = () => {
-            const track = local.getAudioTracks()[0];
-            track.enabled = !track.enabled;
-            $('toggle-mic').innerText = track.enabled ? "🎤" : "🔇";
-            $('toggle-mic').classList.toggle('control-active', !track.enabled);
-        };
 
-        $('toggle-cam').onclick = () => {
-            const track = local.getVideoTracks()[0];
-            track.enabled = !track.enabled;
-            $('toggle-cam').innerText = track.enabled ? "📷" : "🚫";
-            $('toggle-cam').classList.toggle('control-active', !track.enabled);
-        };
-
+        // Force remote video play on stream arrival
         call.on('stream', rs => {
-            const rVid = $('v-remote');
-            rVid.srcObject = rs;
-            rVid.onloadedmetadata = () => rVid.play().catch(console.error);
+            console.log("Stream Arrived");
+            const rv = $('v-remote');
+            rv.srcObject = rs;
+            rv.onloadedmetadata = () => rv.play().catch(e => console.error("Play Error", e));
         });
 
-        const endCall = () => {
-            $('call-ui').style.display = 'none';
-            local.getTracks().forEach(t => t.stop());
-            call.close();
-            // Reset UI states
-            $('toggle-mic').classList.remove('control-active');
-            $('toggle-cam').classList.remove('control-active');
-            $('toggle-mic').innerText = "🎤";
-            $('toggle-cam').innerText = "📷";
-        };
+        $('toggle-mic').onclick = () => { local.getAudioTracks()[0].enabled = !local.getAudioTracks()[0].enabled; $('toggle-mic').classList.toggle('control-active'); };
+        $('toggle-cam').onclick = () => { local.getVideoTracks()[0].enabled = !local.getVideoTracks()[0].enabled; $('toggle-cam').classList.toggle('control-active'); };
 
-        $('hangup-btn').onclick = endCall;
-        call.on('close', endCall);
+        const end = () => { $('call-ui').style.display = 'none'; local.getTracks().forEach(t => t.stop()); call.close(); };
+        $('hangup-btn').onclick = end;
+        call.on('close', end);
     }
 </script>
 </body>
