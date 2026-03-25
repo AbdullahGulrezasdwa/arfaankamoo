@@ -3,375 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProMeet — Professional Suite</title>
+    <title>ProMeet v10 — Final Hardened Build</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root {
-            --zoom-blue: #0b5cff; --bg-side: #1a1d21; --bg-main: #ffffff;
-            --border: #e2e2eb; --text-dark: #131619; --text-dim: #747487;
-            --success: #4aae20; --danger: #ff3b30;
-        }
+        :root { --zoom-blue: #0b5cff; --bg-side: #1a1d21; --border: #e2e2eb; --online: #2ecc71; --offline: #95a5a6; --notify: #ff3b30; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; background: #fff; color: var(--text-dark); }
-
-        /* Layout Architecture */
+        body { font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; background: #fff; }
+        
+        /* Rail & Sidebar */
         .rail { width: 72px; background: var(--bg-side); display: flex; flex-direction: column; align-items: center; padding: 24px 0; gap: 32px; flex-shrink: 0; }
-        .side-panel { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: #fff; }
+        .side-panel { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
         .main-view { flex: 1; display: flex; flex-direction: column; background: #f9f9fb; position: relative; }
 
-        /* Navigation & Contacts */
-        .panel-hdr { padding: 24px 20px; font-weight: 700; font-size: 19px; display: flex; justify-content: space-between; align-items: center; }
-        .contact-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; cursor: pointer; transition: 0.2s; border-bottom: 1px solid #f8f9fa; }
-        .contact-item.active { background: #e8f0fe; border-left: 4px solid var(--zoom-blue); }
-        .avatar { width: 40px; height: 40px; background: #526375; color: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+        /* Chat UI */
+        .chat-msgs { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .bubble { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .sent { align-self: flex-end; background: var(--zoom-blue); color: #fff; border-bottom-right-radius: 2px; }
+        .received { align-self: flex-start; background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
 
-        /* Chat & Threading */
-        .chat-msgs { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-        .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
-        .msg-wrapper.sent { align-self: flex-end; align-items: flex-end; }
-        .msg-wrapper.received { align-self: flex-start; align-items: flex-start; }
-        .bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .sent .bubble { background: var(--zoom-blue); color: #fff; border-bottom-right-radius: 2px; }
-        .received .bubble { background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 2px; }
-        .reply-btn { font-size: 11px; color: var(--text-dim); cursor: pointer; margin-top: 4px; border: none; background: none; }
-        .thread-replies { margin-top: 8px; width: 90%; border-left: 2px solid var(--border); padding-left: 12px; display: flex; flex-direction: column; gap: 6px; }
+        /* Status & Notifications */
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; transition: 0.3s; }
+        .online { background: var(--online); box-shadow: 0 0 8px var(--online); }
+        .offline { background: var(--offline); }
+        .unread-badge { background: var(--notify); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
 
-        /* Modals */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); z-index: 5000; display: flex; align-items: center; justify-content: center; }
-        .modal-card { background: #fff; width: 420px; padding: 32px; border-radius: 24px; text-align: center; box-shadow: 0 25px 70px rgba(0,0,0,0.3); }
-        .m-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-        .m-primary { background: var(--zoom-blue); color: #fff; }
-        .m-secondary { background: #f0f2f5; color: var(--text-dark); }
-
-        /* Video Call Engine */
+        /* Interactive Elements */
+        .contact-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .contact-item:hover { background: #f8f9fa; }
+        .contact-active { background: #f0f7ff !important; border-left: 4px solid var(--zoom-blue); }
+        
+        /* Video Call UI */
         #call-ui { position: fixed; inset: 0; background: #000; z-index: 4000; display: none; flex-direction: column; }
-        .v-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 40px; }
-        video { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; background: #1a1d21; border: 1px solid #333; }
-        .v-controls { height: 120px; display: flex; justify-content: center; align-items: center; gap: 24px; background: rgba(0,0,0,0.4); }
+        .v-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 40px; }
+        video { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; background: #1a1d21; }
+        
+        .control-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: #3c4043; color: white; cursor: pointer; font-size: 20px; transition: 0.2s; }
+        .control-btn:hover { background: #4a4e52; }
+        .control-active { background: #ea4335 !important; }
 
-        /* Visual State Helpers */
-        .badge { background: var(--success); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 5000; display: flex; align-items: center; justify-content: center; }
+        .modal-card { background: #fff; width: 400px; padding: 32px; border-radius: 24px; text-align: center; }
+        .m-btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .m-primary { background: var(--zoom-blue); color: #fff; }
         .hidden { display: none !important; }
-        #reaction-layer { position: fixed; inset: 0; pointer-events: none; z-index: 6000; }
-        .floating-emoji { position: absolute; font-size: 48px; animation: floatUp 3s ease-out forwards; }
-        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 10% { opacity: 1; transform: scale(1.2); } 100% { transform: translateY(-500px) scale(1); opacity: 0; } }
     </style>
 </head>
 <body>
 
     <div id="login-overlay" class="modal-overlay">
         <div class="modal-card">
-            <h2 style="font-size: 28px; margin-bottom: 8px;">ProMeet</h2>
-            <p style="color:var(--text-dim); margin-bottom: 24px;">Enter your workspace identity</p>
-            <input type="text" id="my-name-in" placeholder="Username" style="width:100%; padding:16px; border:1px solid #ddd; border-radius:12px; margin-bottom:15px; outline:none; font-size: 16px;">
-            <button class="m-btn m-primary" onclick="initApp()">Enter Workspace</button>
+            <h2>ProMeet</h2>
+            <input type="text" id="my-name-in" placeholder="Username" style="width:100%; padding:14px; border:1px solid #ddd; border-radius:12px; margin:20px 0; outline:none;">
+            <button class="m-btn m-primary" onclick="initApp()">Sign In</button>
         </div>
     </div>
 
-    <div id="preflight-modal" class="modal-overlay hidden">
-        <div class="modal-card" style="width:550px;">
-            <h3>Pre-Flight Check</h3>
-            <div style="height:240px; background:#000; border-radius:16px; margin:20px 0; overflow:hidden;">
-                <video id="test-v" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
-            </div>
-            <div style="background:#f0f2f5; padding:16px; border-radius:12px; margin-bottom:24px;">
-                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;">
-                    <span id="mic-label">Microphone Status</span>
-                    <span id="mic-val">0%</span>
-                </div>
-                <div style="width:100%; height:8px; background:#ddd; border-radius:4px;"><div id="mic-bar" style="width:0%; height:100%; background:var(--zoom-blue); border-radius:4px; transition:0.1s;"></div></div>
-            </div>
-            <button class="m-btn m-primary" onclick="confirmCallEntry()">Start Meeting</button>
-        </div>
-    </div>
-
-    <div id="invite-modal" class="modal-overlay hidden">
+    <div id="call-request-modal" class="modal-overlay hidden">
         <div class="modal-card">
-            <h3 id="invite-label">Meeting Request</h3>
-            <div id="agenda-box" style="text-align:left; background:#f9f9fb; padding:20px; border-radius:16px; margin:20px 0; border:1px solid var(--border);">
-                <p style="font-size:12px; text-transform:uppercase; color:var(--text-dim); font-weight:700; margin-bottom:8px;">Current Agenda</p>
-                <div id="agenda-items"></div>
-            </div>
-            <button class="m-btn m-primary" id="btn-accept">Accept & Connect</button>
-            <button class="m-btn m-secondary" onclick="$('invite-modal').classList.add('hidden')">Dismiss</button>
+            <h3 id="caller-name">Incoming Call</h3>
+            <button class="m-btn m-primary" id="confirm-call-btn">Accept Call</button>
+            <button class="m-btn m-secondary" onclick="$('call-request-modal').classList.add('hidden')" style="border:none; background:none; cursor:pointer; margin-top:10px;">Ignore</button>
         </div>
     </div>
 
-    <div class="rail">
-        <div style="font-size:24px; cursor:default;">💎</div>
-        <div onclick="toggleAdminPanel()" style="cursor:pointer; font-size:22px; filter:grayscale(1);">🛠️</div>
-        <div onclick="location.reload()" style="cursor:pointer; font-size:22px; margin-top:auto;">🚪</div>
-    </div>
+    <div class="rail"><div style="font-size:24px;">🏢</div></div>
 
     <aside class="side-panel">
-        <div class="panel-hdr">Workspace <span class="badge">PRO</span></div>
-        <div style="padding:0 20px 20px;">
-            <input type="text" id="target-id-in" placeholder="Search or add user..." onkeydown="if(event.key==='Enter')sendInvite()" style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid var(--border); background:#f0f2f5; outline:none; font-size:14px;">
-        </div>
-        <div id="contact-list" style="flex:1; overflow-y:auto;"></div>
+        <div style="padding:24px 20px; font-weight:700;">Workspace</div>
+        <div style="padding:0 20px 20px;"><input type="text" id="target-id-in" placeholder="Add teammate..." onkeydown="if(event.key==='Enter')addContact()" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border); outline:none;"></div>
+        <div id="contact-list" style="overflow-y:auto; flex:1;"></div>
     </aside>
 
     <main class="main-view">
-        <header style="height:80px; padding:0 32px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:#fff;">
-            <div>
-                <div id="active-title" style="font-weight:700; font-size:18px;">Select Team Member</div>
-                <div id="status-text" style="font-size:12px; color:var(--text-dim);">Standby</div>
+        <header style="height:72px; padding:0 30px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:#fff;">
+            <div style="display:flex; align-items:center;">
+                <span id="header-status" class="status-dot offline"></span>
+                <div id="active-title" style="font-weight:700;">Select Conversation</div>
             </div>
-            <div style="display:flex; gap:12px;">
-                <button onclick="triggerHand()" style="background:#fff; border:1px solid var(--border); padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:600;">✋ Raise Hand</button>
-                <button onclick="startPreFlight()" style="background:var(--zoom-blue); color:white; border:none; padding:10px 20px; border-radius:10px; font-weight:600; cursor:pointer;">📹 Video Call</button>
-            </div>
+            <button onclick="initiateCall()" style="background:var(--zoom-blue); color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:600;">Video Call</button>
         </header>
-
         <div class="chat-msgs" id="chat-box"></div>
-
-        <div id="reply-indicator" class="hidden" style="background:#e8f0fe; padding:8px 32px; font-size:12px; display:flex; justify-content:space-between; border-top:1px solid var(--border);">
-            <span>Replying to thread...</span>
-            <span onclick="cancelReply()" style="cursor:pointer; color:var(--zoom-blue); font-weight:700;">Cancel</span>
-        </div>
-
-        <footer style="padding:24px 32px; background:#fff; border-top:1px solid var(--border); display:flex; gap:16px; align-items:center;">
-            <input type="text" id="chat-in" placeholder="Write a message..." style="flex:1; padding:14px 24px; border-radius:28px; border:1px solid var(--border); background:#f0f2f5; outline:none;" onkeydown="if(event.key==='Enter')sendMsg()">
-            <button onclick="sendMsg()" style="border:none; background:none; color:var(--zoom-blue); font-weight:700; cursor:pointer; font-size:15px;">SEND</button>
+        <footer style="padding:20px 30px; background:#fff; border-top:1px solid var(--border); display:flex; gap:12px;">
+            <input type="text" id="chat-in" placeholder="Type a message..." style="flex:1; padding:14px; border-radius:24px; border:1px solid var(--border); outline:none;" onkeydown="if(event.key==='Enter')sendMsg()">
+            <button onclick="sendMsg()" style="border:none; background:none; color:var(--zoom-blue); font-weight:700; cursor:pointer;">SEND</button>
         </footer>
-
-        <div id="admin-panel" class="hidden" style="position:absolute; top:90px; left:20px; width:260px; background:#fff; border-radius:20px; box-shadow:0 15px-40px rgba(0,0,0,0.15); padding:20px; z-index:100; border:1px solid var(--border);">
-            <h4 style="margin-bottom:16px; font-size:15px;">Host Permissions</h4>
-            <button class="m-btn m-secondary" onclick="globalMute()" style="font-size:13px; padding:10px;">🔇 Mute Everyone</button>
-            <button class="m-btn m-secondary" onclick="exportAttendance()" style="font-size:13px; padding:10px; margin-top:8px;">📊 Session Report</button>
-            <hr style="margin:16px 0; border:none; border-top:1px solid #eee;">
-            <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Meeting Lock</span><input type="checkbox" id="lock-meet"></div>
-        </div>
     </main>
 
     <div id="call-ui">
-        <div class="v-grid">
-            <video id="v-local" autoplay muted playsinline style="transform: scaleX(-1);"></video>
-            <video id="v-remote" autoplay playsinline></video>
-        </div>
-        <div class="v-controls">
-            <button onclick="sendEmoji('🔥')" style="font-size:28px; background:none; border:none; cursor:pointer;">🔥</button>
-            <button onclick="sendEmoji('👍')" style="font-size:28px; background:none; border:none; cursor:pointer;">👍</button>
-            <button onclick="sendEmoji('😂')" style="font-size:28px; background:none; border:none; cursor:pointer;">😂</button>
-            <div style="width:1px; height:40px; background:#444; margin:0 20px;"></div>
-            <button onclick="location.reload()" style="background:var(--danger); color:white; border:none; padding:18px 48px; border-radius:16px; font-weight:700; cursor:pointer; font-size:16px;">HANG UP</button>
+        <div class="v-grid"><video id="v-local" autoplay muted playsinline></video><video id="v-remote" autoplay playsinline></video></div>
+        <div style="height:110px; display:flex; justify-content:center; align-items:center; gap:24px; background: #1a1d21;">
+            <button id="toggle-mic" class="control-btn">🎤</button>
+            <button id="toggle-cam" class="control-btn">📷</button>
+            <button id="hangup-btn" style="background:#ff3b30; color:white; border:none; padding:15px 40px; border-radius:30px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                <span>LEAVE</span>
+            </button>
         </div>
     </div>
-
-    <div id="reaction-layer"></div>
 
 <script>
     const $ = id => document.getElementById(id);
     let S = { 
-        peer: null, conn: null, myID: '', activeUser: '', 
-        contacts: JSON.parse(localStorage.getItem('pm_v3_contacts') || '[]'),
-        chat: JSON.parse(localStorage.getItem('pm_v3_chat') || '[]'),
-        attendance: [], activeReplyId: null
+        peer: null, connections: {}, unread: {},
+        myID: '', activeUser: '', 
+        contacts: JSON.parse(localStorage.getItem('pm_contacts') || '[]'),
+        chat: JSON.parse(localStorage.getItem('pm_chat_v10') || '[]')
     };
 
-    // --- INITIALIZATION & PERSISTENCE ---
     window.onload = () => {
-        const savedUser = localStorage.getItem('pm_v3_user');
-        if(savedUser) { $('my-name-in').value = savedUser; initApp(); }
+        const saved = localStorage.getItem('pm_user');
+        if(saved) { $('my-name-in').value = saved; initApp(); }
     };
 
     function initApp() {
         const id = $('my-name-in').value.trim();
         if(!id) return;
-        S.myID = id; localStorage.setItem('pm_v3_user', id);
+        S.myID = id; localStorage.setItem('pm_user', id);
         $('login-overlay').classList.add('hidden');
 
-        S.peer = new Peer(id, { 
-            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
-            debug: 1
-        });
+        S.peer = new Peer(id, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }});
 
-        S.peer.on('connection', conn => {
-            conn.on('data', data => handleSignals(data, conn.peer));
-            logEvent(conn.peer, 'connected');
-        });
+        // 1. Signaling Heartbeat
+        setInterval(() => {
+            if (S.peer && S.peer.disconnected && !S.peer.destroyed) S.peer.reconnect();
+        }, 5000);
 
+        S.peer.on('connection', conn => trackConnection(conn));
+        
         S.peer.on('call', async call => {
-            if(confirm("Incoming video call from " + call.peer)) {
-                const s = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-                call.answer(s);
-                setupVideoUI(s, call);
+            $('call-request-modal').classList.remove('hidden');
+            $('caller-name').innerText = "Call from " + call.peer;
+            $('confirm-call-btn').onclick = async () => {
+                $('call-request-modal').classList.add('hidden');
+                const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+                call.answer(stream);
+                setupVideoUI(stream, call);
+            };
+        });
+
+        S.peer.on('error', err => {
+            if(err.type === 'peer-unavailable') console.warn("Peer not found.");
+        });
+
+        renderContacts();
+    }
+
+    // --- REFINED TRACKING ---
+    function trackConnection(conn) {
+        S.connections[conn.peer] = conn;
+        const updateUI = () => {
+            renderContacts();
+            if (S.activeUser === conn.peer) {
+                $('header-status').className = `status-dot ${conn.open ? 'online' : 'offline'}`;
             }
-        });
-
-        renderContactList();
-    }
-
-    // --- SIGNAL HANDLING (ORCHESTRATION) ---
-    function handleSignals(data, from) {
-        switch(data.type) {
-            case 'invite': showInvite(from, data.agenda); break;
-            case 'accept': addContact(from); toast(from + " added you back."); break;
-            case 'chat': pushMsg(data.val, from, false, data.parentId); break;
-            case 'emoji': floatEmoji(data.val); break;
-            case 'hand': toast("✋ " + from + " raised their hand!"); break;
-            case 'force-mute': 
-                const s = $('v-local').srcObject;
-                if(s) s.getAudioTracks().forEach(t => t.enabled = false);
-                toast("Host has muted your microphone.");
-                break;
-        }
-    }
-
-    function sendInvite() {
-        const t = $('target-id-in').value.trim();
-        if(!t || t === S.myID) return;
-        const c = S.peer.connect(t);
-        c.on('open', () => {
-            c.send({ type: 'invite', agenda: ["Introduction", "Live Demo", "Q&A Session"] });
-            toast("Invite sent to " + t);
-        });
-        $('target-id-in').value = '';
-    }
-
-    function showInvite(from, agenda) {
-        $('agenda-items').innerHTML = agenda.map(i => `<div style="padding:4px 0;">• ${i}</div>`).join('');
-        $('invite-modal').classList.remove('hidden');
-        $('btn-accept').onclick = () => {
-            addContact(from);
-            const c = S.peer.connect(from);
-            c.on('open', () => c.send({ type: 'accept' }));
-            $('invite-modal').classList.add('hidden');
-            selectContact(from);
         };
+
+        conn.on('data', data => {
+            if(data.type === 'chat') handleIncomingMsg(conn.peer, data.val);
+        });
+
+        conn.on('open', updateUI);
+        conn.on('close', () => { delete S.connections[conn.peer]; updateUI(); });
+        conn.on('error', () => { delete S.connections[conn.peer]; updateUI(); });
+        updateUI();
     }
 
-    function addContact(name) {
-        if(!S.contacts.includes(name)) {
-            S.contacts.push(name);
-            localStorage.setItem('pm_v3_contacts', JSON.stringify(S.contacts));
-            renderContactList();
+    // --- MESSAGING ---
+    function handleIncomingMsg(from, val) {
+        if (!S.contacts.includes(from)) {
+            S.contacts.push(from);
+            localStorage.setItem('pm_contacts', JSON.stringify(S.contacts));
         }
+        if (S.activeUser !== from) S.unread[from] = (S.unread[from] || 0) + 1;
+        pushMsg(val, from, false, S.myID);
     }
 
-    function renderContactList() {
-        $('contact-list').innerHTML = S.contacts.map(c => `
-            <div class="contact-item" onclick="selectContact('${c}')" id="u-${c}">
-                <div class="avatar">${c[0].toUpperCase()}</div>
-                <div><div style="font-weight:600;">${c}</div><div style="font-size:10px; opacity:0.6;">Active</div></div>
-            </div>
-        `).join('');
-    }
-
-    function selectContact(name) {
-        S.activeUser = name;
-        $('active-title').innerText = name;
-        $('status-text').innerText = "Establishing Connection...";
-        document.querySelectorAll('.contact-item').forEach(e => e.classList.remove('active'));
-        $(`u-${name}`).classList.add('active');
-        S.conn = S.peer.connect(name);
-        S.conn.on('open', () => $('status-text').innerText = "Online & Secure");
-        renderChat();
-    }
-
-    // --- MESSAGING & THREADS ---
     function sendMsg() {
         const val = $('chat-in').value.trim();
-        if(!val || !S.conn) return;
-        const pId = S.activeReplyId;
-        S.conn.send({ type: 'chat', val, parentId: pId });
-        pushMsg(val, S.myID, true, pId);
-        $('chat-in').value = '';
-        cancelReply();
+        if (!val || !S.activeUser) return;
+        let conn = S.connections[S.activeUser];
+
+        const performSend = () => {
+            if (conn && conn.open) {
+                conn.send({ type: 'chat', val: val });
+                pushMsg(val, S.myID, true, S.activeUser);
+                $('chat-in').value = '';
+            }
+        };
+
+        if (conn && conn.open) performSend();
+        else {
+            if (!conn) { conn = S.peer.connect(S.activeUser); trackConnection(conn); }
+            if (!conn._msgPending) {
+                conn._msgPending = true;
+                conn.once('open', () => { conn._msgPending = false; performSend(); });
+            }
+        }
     }
 
-    function pushMsg(text, from, me, parentId) {
-        const id = Date.now();
-        const msg = { id, text, from, me, target: S.activeUser, parentId, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
-        S.chat.push(msg);
-        localStorage.setItem('pm_v3_chat', JSON.stringify(S.chat));
-        renderChat();
+    function pushMsg(text, from, me, target) {
+        const entry = { id: Date.now(), text, from, me, target, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) };
+        S.chat.push(entry);
+        localStorage.setItem('pm_chat_v10', JSON.stringify(S.chat));
+        if(S.activeUser === from || (me && S.activeUser === target)) renderChat();
+        renderContacts();
     }
 
     function renderChat() {
-        const current = S.chat.filter(m => m.from === S.activeUser || (m.me && m.target === S.activeUser));
-        const mains = current.filter(m => !m.parentId);
-        
-        $('chat-box').innerHTML = mains.map(m => {
-            const replies = current.filter(r => r.parentId === m.id);
-            return `
-                <div class="msg-wrapper ${m.me ? 'sent' : 'received'}">
-                    <div class="bubble">${m.text}</div>
-                    <button class="reply-btn" onclick="startReply(${m.id})">Reply • ${m.time}</button>
-                    ${replies.length ? `<div class="thread-replies">${replies.map(r => `<div class="bubble" style="font-size:12px;">${r.text}</div>`).join('')}</div>` : ''}
-                </div>
-            `;
-        }).join('');
+        const current = S.chat.filter(m => (m.me && m.target === S.activeUser) || (!m.me && m.from === S.activeUser));
+        $('chat-box').innerHTML = current.map(m => `
+            <div class="bubble ${m.me ? 'sent' : 'received'}">
+                <div style="font-size:10px; opacity:0.6; margin-bottom:4px;">${m.from} • ${m.time}</div>
+                ${m.text}
+            </div>
+        `).join('');
         $('chat-box').scrollTop = $('chat-box').scrollHeight;
     }
 
-    function startReply(id) { S.activeReplyId = id; $('reply-indicator').classList.remove('hidden'); $('chat-in').focus(); }
-    function cancelReply() { S.activeReplyId = null; $('reply-indicator').classList.add('hidden'); }
-
-    // --- PRE-FLIGHT & VIDEO ---
-    async function startPreFlight() {
-        if(!S.activeUser) return toast("Select a contact first.");
-        $('preflight-modal').classList.remove('hidden');
-        const s = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-        $('test-v').srcObject = s;
-        
-        const audioCtx = new AudioContext();
-        const ana = audioCtx.createAnalyser();
-        audioCtx.createMediaStreamSource(s).connect(ana);
-        const data = new Uint8Array(ana.frequencyBinCount);
-        const loop = () => {
-            ana.getByteFrequencyData(data);
-            const vol = data.reduce((a,b)=>a+b)/data.length;
-            $('mic-bar').style.width = Math.min(vol*4, 100) + '%';
-            $('mic-val').innerText = Math.floor(Math.min(vol*4, 100)) + '%';
-            if(!$('preflight-modal').classList.contains('hidden')) requestAnimationFrame(loop);
-        };
-        loop();
+    // --- SIDEBAR ---
+    function selectUser(name) {
+        S.activeUser = name;
+        delete S.unread[name];
+        $('active-title').innerText = name;
+        renderContacts();
+        renderChat();
+        if (!S.connections[name]) trackConnection(S.peer.connect(name));
     }
 
-    function confirmCallEntry() {
-        const stream = $('test-v').srcObject;
-        $('preflight-modal').classList.add('hidden');
-        const call = S.peer.call(S.activeUser, stream);
-        setupVideoUI(stream, call);
+    function renderContacts() {
+        $('contact-list').innerHTML = S.contacts.map(c => {
+            const isOnline = S.connections[c] && S.connections[c].open;
+            const count = S.unread[c] || 0;
+            return `
+                <div onclick="selectUser('${c}')" class="contact-item ${S.activeUser===c?'contact-active':''}">
+                    <div style="display:flex; align-items:center;">
+                        <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                        <span>${c}</span>
+                    </div>
+                    ${count > 0 ? `<span class="unread-badge">${count}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function addContact() {
+        const t = $('target-id-in').value.trim();
+        if(t && !S.contacts.includes(t)) {
+            S.contacts.push(t);
+            localStorage.setItem('pm_contacts', JSON.stringify(S.contacts));
+            renderContacts();
+        }
+        $('target-id-in').value = '';
+    }
+
+    // --- VIDEO & MEDIA CONTROLS (V10) ---
+    async function initiateCall() {
+        if(!S.activeUser) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+            const call = S.peer.call(S.activeUser, stream);
+            setupVideoUI(stream, call);
+        } catch(e) { alert("Camera access denied."); }
     }
 
     function setupVideoUI(local, call) {
         $('call-ui').style.display = 'flex';
         $('v-local').srcObject = local;
-        call.on('stream', rs => $('v-remote').srcObject = rs);
-    }
+        
+        // Mute/Camera Toggle Handlers
+        $('toggle-mic').onclick = () => {
+            const track = local.getAudioTracks()[0];
+            track.enabled = !track.enabled;
+            $('toggle-mic').innerText = track.enabled ? "🎤" : "🔇";
+            $('toggle-mic').classList.toggle('control-active', !track.enabled);
+        };
 
-    // --- ENGAGEMENT & ADMIN ---
-    function sendEmoji(e) { if(S.conn) S.conn.send({type:'emoji', val:e}); floatEmoji(e); }
-    function floatEmoji(e) {
-        const el = document.createElement('div');
-        el.className = 'floating-emoji'; el.innerText = e;
-        el.style.left = (20 + Math.random() * 60) + '%';
-        $('reaction-layer').appendChild(el);
-        setTimeout(() => el.remove(), 3000);
-    }
+        $('toggle-cam').onclick = () => {
+            const track = local.getVideoTracks()[0];
+            track.enabled = !track.enabled;
+            $('toggle-cam').innerText = track.enabled ? "📷" : "🚫";
+            $('toggle-cam').classList.toggle('control-active', !track.enabled);
+        };
 
-    function triggerHand() { if(S.conn) S.conn.send({type:'hand'}); toast("Hand raised ✋"); }
-    function globalMute() { if(S.conn) S.conn.send({type:'force-mute'}); toast("Global mute sent."); }
-    function toggleAdminPanel() { $('admin-panel').classList.toggle('hidden'); }
-    
-    function logEvent(user, type) { S.attendance.push({ user, type, time: new Date().toLocaleTimeString() }); }
-    
-    function exportAttendance() {
-        const rows = [["User", "Event", "Timestamp"], ...S.attendance.map(a => [a.user, a.type, a.time])];
-        const csv = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
-        const link = document.createElement("a");
-        link.href = encodeURI(csv); link.download = "meeting_report.csv"; link.click();
-    }
+        call.on('stream', rs => {
+            const rVid = $('v-remote');
+            rVid.srcObject = rs;
+            rVid.onloadedmetadata = () => rVid.play().catch(console.error);
+        });
 
-    function toast(t) {
-        const el = document.createElement('div');
-        el.style = "position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#1a1d21; color:#fff; padding:14px 28px; border-radius:12px; font-size:14px; z-index:9999; box-shadow:0 10px 30px rgba(0,0,0,0.2);";
-        el.innerText = t;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 3500);
+        const endCall = () => {
+            $('call-ui').style.display = 'none';
+            local.getTracks().forEach(t => t.stop());
+            call.close();
+            // Reset UI states
+            $('toggle-mic').classList.remove('control-active');
+            $('toggle-cam').classList.remove('control-active');
+            $('toggle-mic').innerText = "🎤";
+            $('toggle-cam').innerText = "📷";
+        };
+
+        $('hangup-btn').onclick = endCall;
+        call.on('close', endCall);
     }
 </script>
 </body>
